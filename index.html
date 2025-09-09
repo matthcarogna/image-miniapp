@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Generatore Immagini</title>
+    <style>
+      body{font-family:system-ui,sans-serif;max-width:800px;margin:24px auto;padding:0 16px}
+      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:16px}
+      label{font-size:14px;color:#333;margin-top:8px;display:block}
+      input,select,textarea{padding:10px;border-radius:10px;border:1px solid #ddd;width:100%}
+      button{padding:10px 14px;border:0;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.1);cursor:pointer}
+      .row{display:flex;gap:12px}.row>*{flex:1}
+    </style>
+  </head>
+  <body>
+    <h2>Genera immagini</h2>
+    <label>Descrizione</label>
+    <textarea id="prompt" rows="3" placeholder="Es: 'bouquet di fiori in stile acquerello, palette pastello'"></textarea>
+
+    <div class="row">
+      <div>
+        <label>Dimensione</label>
+        <select id="size">
+          <option>1024x1024</option>
+          <option>1024x768</option>
+          <option>768x1024</option>
+          <option>512x512</option>
+        </select>
+      </div>
+      <div>
+        <label>Quante</label>
+        <select id="n">
+          <option>1</option><option>2</option><option>3</option><option>4</option>
+        </select>
+      </div>
+    </div>
+
+    <p><button id="go">Genera</button></p>
+    <div id="status"></div>
+    <div class="grid" id="out"></div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      $("go").onclick = async () => {
+        const prompt = $("prompt").value.trim();
+        const size = $("size").value;
+        const n = $("n").value;
+        $("status").textContent = "⏳ Genero...";
+        $("out").innerHTML = "";
+        const r = await fetch("/api/generate", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ prompt, size, n })
+        });
+        const data = await r.json();
+        if (!r.ok) { $("status").textContent = "Errore: " + (data.error || r.status); return; }
+        $("status").textContent = "";
+        data.images.forEach(b64 => {
+          const a = document.createElement("a");
+          a.download = "image.png";
+          a.href = "data:image/png;base64," + b64;
+          const img = document.createElement("img");
+          img.src = a.href;
+          img.style.width = "100%";
+          img.style.borderRadius = "12px";
+          a.appendChild(img);
+          $("out").appendChild(a);
+        });
+      };
+    </script>
+  </body>
+</html>
