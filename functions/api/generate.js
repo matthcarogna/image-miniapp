@@ -1,0 +1,34 @@
+export async function onRequestPost(ctx) {
+  try {
+    const { prompt, size = "1024x1024", n = 1 } = await ctx.request.json();
+    if (!prompt || typeof prompt !== "string") {
+      return new Response(JSON.stringify({ error: "Prompt mancante" }), { status: 400 });
+    }
+    const count = Math.min(Number(n) || 1, 4);
+
+    const resp = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${ctx.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt,
+        size,
+        n: count
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      return new Response(JSON.stringify({ error: err }), { status: resp.status });
+    }
+
+    const data = await resp.json(); // { data: [{ b64_json }, ...] }
+    const images = (data.data || []).map(d => d.b64_json);
+    return new Response(JSON.stringify({ images }), { headers: { "Content-Type": "application/json" } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  }
+}
